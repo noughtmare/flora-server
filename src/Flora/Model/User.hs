@@ -13,14 +13,15 @@ import Data.UUID
 import Database.PostgreSQL.Entity
 import Database.PostgreSQL.Entity.Types
 import Database.PostgreSQL.Simple (Only (Only))
-import Database.PostgreSQL.Simple.FromField (FromField (..))
+import Database.PostgreSQL.Simple.FromField (FromField (..), fromJSONField)
 import Database.PostgreSQL.Simple.FromRow (FromRow (..))
-import Database.PostgreSQL.Simple.ToField (ToField (..))
+import Database.PostgreSQL.Simple.ToField (ToField (..), toJSONField)
 import Database.PostgreSQL.Simple.ToRow (ToRow (..))
 import Database.PostgreSQL.Transact (DBT)
 import GHC.Generics
 import GHC.Stack
 import GHC.TypeLits (ErrorMessage (..), TypeError)
+import Data.Text.Display (Display, displayBuilder)
 
 newtype UserId = UserId { getUserId :: UUID }
   deriving stock (Generic, Show)
@@ -33,6 +34,7 @@ data User = User
   , email       :: Text
   , displayName :: Text
   , password    :: PasswordHash Argon2
+  , userFlags   :: UserFlags
   , createdAt   :: UTCTime
   , updatedAt   :: UTCTime
   }
@@ -41,13 +43,26 @@ data User = User
   deriving Entity
     via (GenericEntity '[TableName "users"] User)
 
+data UserFlags = UserFlags
+  { isAdmin  :: Bool
+  , canLogin :: Bool
+  }
+  deriving stock (Eq, Generic, Show)
+  deriving anyclass (FromJSON, ToJSON)
+
+instance FromField UserFlags where
+  fromField = fromJSONField
+
+instance ToField UserFlags where
+  toField = toJSONField
+
 -- | Type error! Do not use 'toJSON' on a 'Password'!
 instance TypeError (CannotDisplayPassword "JSON") => ToJSON Password where
   toJSON = error "unreachable"
 
--- -- | Type error! Do not use 'display' on a 'Password'!
--- instance TypeError (CannotDisplayPassword "Text") => Display Password where
---   toJSON = error "unreachable"
+-- | Type error! Do not use 'display' on a 'Password'!
+instance TypeError (CannotDisplayPassword "Text") => Display Password where
+  displayBuilder = error "unreachable"
 
 type CannotDisplayPassword e =
   'Text "🚫 Tried to convert plain-text Password to " ':<>: 'Text e ':<>: 'Text "!"

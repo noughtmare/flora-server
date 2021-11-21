@@ -8,7 +8,10 @@ import Control.Monad.Reader
 import Data.Foldable
 import Data.Function
 import Data.Text
+import qualified Data.Text as T
 import Database.PostgreSQL.Entity.DBT (withPool)
+import Distribution.Parsec (simpleParsec)
+import Distribution.Types.Version (Version)
 import Lucid
 import Lucid.Orphans ()
 import Network.HTTP.Types.Status
@@ -18,9 +21,6 @@ import Servant.API.Generic
 import Servant.HTML.Lucid
 import Servant.Server.Generic
 
-import qualified Data.Text as T
-import Distribution.Parsec (simpleParsec)
-import Distribution.Types.Version (Version)
 import Flora.Environment
 import Flora.Model.Package
 import Flora.Model.Package.Types
@@ -36,8 +36,8 @@ type Routes = ToServantApi Routes'
 
 data Routes' mode = Routes'
   { --new  :: mode :- "new" :> AuthProtect "cookie-auth" :> Get '[HTML] (Html ())
-    show :: mode :-  Capture "organisation" Text :> Capture "package" Text :> Get '[HTML] (Html ())
-  , showVersion :: mode :- Capture "organisation" Text :> Capture "package" Text :> Capture "version" Text :> Get '[HTML] (Html ())
+    show :: mode :-  Capture "namespace" Text :> Capture "package" Text :> Get '[HTML] (Html ())
+  , showVersion :: mode :- Capture "namespace" Text :> Capture "package" Text :> Capture "version" Text :> Get '[HTML] (Html ())
   }
   deriving stock (Generic)
 

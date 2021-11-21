@@ -10,6 +10,10 @@ hackageUser =
       email = "tech@flora.pm"
       displayName = "Stand-in Hackage user"
       password = PasswordHash "pZFZEFEZFZEFZEFZFZE"
+      userFlags =
+        UserFlags { isAdmin = False
+                  , canLogin = False
+                  }
       createdAt   = read "2021-04-23 10:00:00 UTC"
       updatedAt   = read "2021-04-23 10:00:00 UTC"
-    in User{..}
+   in User{..}

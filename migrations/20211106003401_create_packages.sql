@@ -11,3 +11,4 @@ create table packages (
 
 /* create unique index on packages(lower(name) text_pattern_ops); */
 create unique index on packages(lower(name), lower(namespace));
+create unique index on packages(package_id, lower(name), lower(namespace));

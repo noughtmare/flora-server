@@ -4,6 +4,7 @@ module Flora.Model.Package.Types where
 
 import Data.Aeson
 import Data.Aeson.Orphans ()
+import Data.Data
 import Data.Text (Text, unpack)
 import Data.Text.Display
 import Data.Time (UTCTime)
@@ -21,7 +22,6 @@ import Lucid
 import qualified Text.PrettyPrint as PP
 import Text.Regex.Pcre2
 
-import Data.Data
 import Flora.Model.Package.Orphans ()
 import Flora.Model.User
 
@@ -92,7 +92,7 @@ instance Entity Package where
 
 data PackageMetadata = PackageMetadata
   { license       :: SPDX.License
-  , sourceRepo    :: Text
+  , sourceRepos   :: [Text]
   , homepage      :: Maybe Text
   , documentation :: Text
   , bugTracker    :: Maybe Text

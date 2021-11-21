@@ -6,7 +6,8 @@ import qualified Flora.PackageSpec as PackageSpec
 import qualified Flora.UserSpec as UserSpec
 
 main :: IO ()
-main = hspec spec
+main = do
+  hspec spec
 
 spec :: Spec
 spec = do

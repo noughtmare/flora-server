@@ -6,7 +6,8 @@ module Flora.Model.Package
   , PackageName
   , Namespace
   , PackageMetadata(..)
-  , createPackage
+  , insertPackage
+  , getAllPackages
   , getPackageById
   , getPackageByNamespaceAndName
   , getPackageDependents
@@ -16,9 +17,10 @@ module Flora.Model.Package
 
 import Control.Monad (void)
 import Data.Vector (Vector)
-import Database.PostgreSQL.Entity (_selectWhere, delete, insert, selectById)
+import Database.PostgreSQL.Entity (_select, _selectWhere, delete, insert,
+                                   selectById)
 import Database.PostgreSQL.Entity.DBT (QueryNature (Select, Update), execute,
-                                       query, queryOne)
+                                       query, queryOne, query_)
 import Database.PostgreSQL.Entity.Types (field)
 import Database.PostgreSQL.Simple (Only (Only))
 import Database.PostgreSQL.Simple.SqlQQ (sql)
@@ -27,8 +29,11 @@ import Database.PostgreSQL.Transact (DBT)
 import Flora.Model.Package.Orphans ()
 import Flora.Model.Package.Types
 
-createPackage :: Package -> DBT IO ()
-createPackage package = insert @Package package
+insertPackage :: Package -> DBT IO ()
+insertPackage package = insert @Package package
+
+getAllPackages :: DBT IO (Vector Package)
+getAllPackages = query_ Select (_select @Package)
 
 getPackageById :: PackageId -> DBT IO (Maybe Package)
 getPackageById packageId = selectById @Package (Only packageId)

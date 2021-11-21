@@ -12,6 +12,9 @@ import qualified Distribution.Pretty as Pretty
 import Distribution.Simple.Utils (fromUTF8BS)
 import Distribution.Types.Version
 import Distribution.Types.VersionRange
+import Data.Text.Display
+import qualified Data.Text.Lazy.Builder as Builder
+import Distribution.Pretty (prettyShow)
 
 instance FromField Version where
   fromField :: Field -> Maybe ByteString -> Conversion Version
@@ -40,3 +43,6 @@ instance FromField VersionRange where
 
 instance ToField VersionRange where
   toField = Escape . C8.pack . Pretty.prettyShow
+
+instance Display Version where
+  displayBuilder = Builder.fromString . prettyShow
