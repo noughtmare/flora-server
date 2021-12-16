@@ -1,8 +1,7 @@
 module Flora.Environment
   ( FloraEnv(..)
   , LoggingEnv(..)
-  , CallInfo(..)
-  , AuthedUser(..)
+  , DeploymentEnv(..)
   , getFloraEnv
   ) where
 
@@ -18,35 +17,27 @@ import Database.PostgreSQL.Entity.DBT
 import qualified Database.PostgreSQL.Simple as PG
 import Env (AsUnread (unread), Error (..), Parser, Reader, def, help, nonempty,
             parse, str, switch, var, (<=<))
-import Flora.Model.User
 import GHC.Generics
 import Text.Read (readMaybe)
 
 -- | The datatype that is used in the application
 data FloraEnv = FloraEnv
-  { pool     :: Pool PG.Connection
-  , httpPort :: Word16
-  , domain   :: Text
-  , logging  :: LoggingEnv
+  { pool        :: Pool PG.Connection
+  , httpPort    :: Word16
+  , domain      :: Text
+  , logging     :: LoggingEnv
+  , environment :: DeploymentEnv
   }
   deriving stock (Show, Generic)
 
--- | Datatype used for every route that doesn't *need* an authenticated user
-data CallInfo = CallInfo
-  { userInfo :: Maybe User
-  , floraEnv :: FloraEnv
-  } deriving stock (Show, Generic)
-
--- | Datatype used for routes that *need* an authenticated user
-data AuthedUser = AuthedUser
-  { userInfo :: User
-  , floraEnv :: FloraEnv
-  } deriving stock (Show, Generic)
+data DeploymentEnv
+  = Production
+  | Development
+  deriving stock (Show, Eq, Generic, Enum, Bounded)
 
 data LoggingEnv = LoggingEnv
   { sentryDSN         :: Maybe String
   , prometheusEnabled :: Bool
-  , environment       :: String
   }
   deriving stock (Show, Generic)
 
@@ -57,6 +48,7 @@ data FloraConfig = FloraConfig
   , domain      :: Text
   , httpPort    :: Word16
   , logging     :: LoggingEnv
+  , environment :: DeploymentEnv
   }
   deriving stock Show
 
@@ -109,13 +101,16 @@ parseLoggingEnv =
   LoggingEnv
   <$> var (pure . Just <=< nonempty) "FLORA_SENTRY_DSN" (help "Sentry DSN" <> def Nothing)
   <*> switch "FLORA_PROMETHEUS_ENABLED" (help "Whether or not Prometheus is enabled")
-  <*> var str "FLORA_ENVIRONMENT" (help "Name of the current environment (local, dev, prod)")
 
 parsePort :: Parser Error Word16
 parsePort = var port "FLORA_HTTP_PORT" (help "HTTP Port for Flora")
 
 parseDomain :: Parser Error Text
 parseDomain = var str "FLORA_DOMAIN" (help "URL domain for Flora")
+
+parseDeploymentEnv :: Parser Error DeploymentEnv
+parseDeploymentEnv =
+  var deploymentEnv "FLORA_ENVIRONMENT" (help "Name of the current environment (production, development)")
 
 parseConfig :: Parser Error FloraConfig
 parseConfig =
@@ -125,6 +120,7 @@ parseConfig =
   <*> parseDomain
   <*> parsePort
   <*> parseLoggingEnv
+  <*> parseDeploymentEnv
 
 getFloraEnv :: IO FloraEnv
 getFloraEnv = do
@@ -151,3 +147,8 @@ nonNegative nni = if nni >= 0 then Right nni else Left . unread . show $ nni
 
 timeout :: Reader Error NominalDiffTime
 timeout t = second fromIntegral (int >=> nonNegative $ t)
+
+deploymentEnv :: Reader Error DeploymentEnv
+deploymentEnv "production"  = Right Production
+deploymentEnv "development" = Right Development
+deploymentEnv e             = Left $ unread e

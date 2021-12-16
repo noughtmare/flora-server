@@ -13,9 +13,7 @@ import Lucid
 import Lucid.Orphans ()
 import Network.HTTP.Types.Status
 import Optics.Core
-import Servant
 import Servant.API.Generic
-import Servant.HTML.Lucid
 import Servant.Server.Generic
 
 import qualified Data.Text as T
@@ -26,31 +24,22 @@ import Flora.Model.Package
 import Flora.Model.Package.Types
 import Flora.Model.Release
 import Flora.Model.Requirement
+import FloraWeb.Routes.Pages.Packages
 import FloraWeb.Server.Auth
 import FloraWeb.Templates
 import FloraWeb.Templates.Error
 import qualified FloraWeb.Templates.Pages.Packages as Packages
-import FloraWeb.Templates.Types
-
-type Routes = ToServantApi Routes'
-
-data Routes' mode = Routes'
-  { --new  :: mode :- "new" :> AuthProtect "cookie-auth" :> Get '[HTML] (Html ())
-    show :: mode :-  Capture "organisation" Text :> Capture "package" Text :> Get '[HTML] (Html ())
-  , showVersion :: mode :- Capture "organisation" Text :> Capture "package" Text :> Capture "version" Text :> Get '[HTML] (Html ())
-  }
-  deriving stock (Generic)
 
 server :: ToServant Routes' (AsServerT FloraPageM)
 server = genericServerT Routes'
-  { --new = undefined
-    show = showHandler
+  { show = showHandler
   , showVersion = showVersionHandler
   }
 
 showHandler :: Text -> Text -> FloraPageM (Html ())
 showHandler namespaceText nameText = do
-  FloraEnv{pool} <- asks (\callInfo -> callInfo ^. #floraEnv )
+  session <- ask
+  let FloraEnv{pool} = session ^. #floraEnv
   case (validateNamespace namespaceText, validateName nameText) of
     (Just namespace, Just name) -> do
       result <- liftIO $ withPool pool $ getPackageByNamespaceAndName namespace name
@@ -61,12 +50,14 @@ showHandler namespaceText nameText = do
           releases <- liftIO $ withPool pool $ getReleases (package ^. #packageId)
           let latestRelease =  maximumBy (compare `on` version) releases
           latestReleasedependencies <- liftIO $ withPool pool $ getRequirements (latestRelease ^. #releaseId)
-          render defaultTemplateEnv $ Packages.showPackage latestRelease package dependents latestReleasedependencies
+          let templateEnv = fromSession session defaultTemplateEnv
+          render templateEnv $ Packages.showPackage latestRelease package dependents latestReleasedependencies
     _ -> renderError notFound404
 
 showVersionHandler :: Text -> Text -> Text -> FloraPageM (Html ())
 showVersionHandler namespaceText nameText versionText = do
-  FloraEnv{pool} <- asks (\callInfo -> callInfo ^. #floraEnv)
+  session <- ask
+  let FloraEnv{pool} = session ^. #floraEnv
   case (validateNamespace namespaceText, validateName nameText, validateVersion versionText) of
     (Just namespace, Just name, Just versionSpec) -> do
       result <- liftIO $ withPool pool $ getPackageByNamespaceAndName namespace name
@@ -79,7 +70,8 @@ showVersionHandler namespaceText nameText versionText = do
               Nothing -> renderError notFound404
               Just release -> do
                 releaseDependencies <- liftIO $ withPool pool $ getRequirements (release ^. #releaseId)
-                render defaultTemplateEnv $ Packages.showPackage release package dependents releaseDependencies
+                let templateEnv = fromSession session defaultTemplateEnv
+                render templateEnv $ Packages.showPackage release package dependents releaseDependencies
     _ -> renderError notFound404
 
 

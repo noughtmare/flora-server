@@ -3,23 +3,25 @@ module FloraWeb.Templates.Error
   , showError
   ) where
 
+import Control.Monad.Reader
 import Lucid
 import Network.HTTP.Types.Status
+import Optics.Core
 
 import FloraWeb.Server.Auth
 import FloraWeb.Templates
-import FloraWeb.Templates.Types
 import Servant
 
 renderError :: Status -> FloraPageM a
 renderError status = do
-  let templateEnv =  defaultTemplateEnv{title = "Flora :: *** Exception"}
+  session <- ask
+  let templateEnv = fromSession session defaultTemplateEnv & (#title .~ "Flora :: *** Exception")
   let body = mkErrorPage templateEnv $ showError status
   throwError $ ServerError{ errHTTPCode = statusCode status
-                     , errBody = body
-                     , errReasonPhrase = ""
-                     , errHeaders = []
-                     }
+                          , errBody = body
+                          , errReasonPhrase = ""
+                          , errHeaders = []
+                          }
 
 showError :: Status -> FloraHTML
 showError status = do

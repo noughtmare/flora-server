@@ -44,6 +44,7 @@ runOptions (Options Provision) = do
   env <- getFloraEnv
   withPool (pool env) $ do
     insertUser hackageUser
+    insertUser user2
 
     publishPackage [] ghcPrimRelease ghcPrim hackageUser
     publishPackage [ghcBignumDepOnGhcPrim] ghcBignumRelease ghcBignum hackageUser
