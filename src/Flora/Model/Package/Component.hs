@@ -113,7 +113,7 @@ instance FromRow PackageComponent where
     let canonicalForm = CanonicalComponent componentName' componentType'
     pure $ PackageComponent componentId' releaseId' canonicalForm
 
--- | Data Access Object used to
+-- | Data Access Object used to serialise to the DB
 data PackageComponent' = PackageComponent'
   { componentId'   :: ComponentId
   , releaseId'     :: ReleaseId

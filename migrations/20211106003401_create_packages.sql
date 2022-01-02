@@ -1,3 +1,4 @@
+-- A package is comprised of metadata and has many releases.
 create table packages (
   package_id uuid primary key,
   namespace text not null,

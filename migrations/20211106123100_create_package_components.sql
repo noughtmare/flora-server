@@ -1,7 +1,7 @@
 -- A package component is the smallest unit of a Hackage package.
 -- Each package may contain a default, top-level library, as well as
--- sub-libraries, executables, test & benchmark suites.
--- All these are components, and they bear the dependencies with them.
+-- sub-libraries, executables, test suites & benchmark.
+-- All these are components have many dependency requirements
 create type component as enum ('library', 'executable', 'test', 'benchmark', 'foreign-library');
 
 create table package_components (
