@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-unused-imports #-}
 module Flora.Import.Package where
 
 import Control.Monad.Except
@@ -14,7 +15,8 @@ import qualified Data.UUID.V4 as UUID
 import Database.PostgreSQL.Transact
 import Distribution.PackageDescription (PackageDescription, UnqualComponentName,
                                         allLibraries, benchmarks, depPkgName,
-                                        executables, targetBuildDepends,
+                                        executables, foreignLibs, library,
+                                        subLibraries, targetBuildDepends,
                                         testSuites, unUnqualComponentName)
 import qualified Distribution.PackageDescription as Cabal hiding (PackageName)
 import Distribution.PackageDescription.Configuration
@@ -22,6 +24,7 @@ import Distribution.PackageDescription.Parsec (parseGenericPackageDescriptionMay
 import Distribution.Pretty
 import Distribution.Types.Benchmark
 import Distribution.Types.Executable
+import Distribution.Types.ForeignLib
 import Distribution.Types.GenericPackageDescription (GenericPackageDescription)
 import Distribution.Types.Library
 import Distribution.Types.LibraryName
@@ -109,12 +112,13 @@ extractComponents :: UserId
                   -> PackageName -- ^ Name of the package to which the release belongs
                   -> ExceptT ImportError (DBT IO) [(PackageComponent, [Requirement])]
 extractComponents userId directory dependentName pkgDesc releaseId packageName = do
-  libComps        <- traverse (extractFromLib        userId directory dependentName releaseId packageName) (allLibraries pkgDesc)
-  executableComps <- traverse (extractFromExecutable userId directory dependentName releaseId) (executables pkgDesc)
-  testSuiteComps  <- traverse (extractFromTestSuite  userId directory dependentName releaseId) (testSuites pkgDesc)
-  benchmarkComps  <- traverse (extractFromBenchmark  userId directory dependentName releaseId) (benchmarks pkgDesc)
-  -- foreignLibComps  <- traverse (extractFromforeignLib releaseId) (foreignLibs pkgDesc)
-  pure $ libComps <> executableComps <> testSuiteComps <> benchmarkComps -- <> foreignLibComps
+  mainLib         <- traverse (extractFromLib userId directory dependentName releaseId packageName) (maybeToList $ library pkgDesc)
+  let subLibComps = [] -- traverse (extractFromLib userId directory dependentName releaseId packageName) (subLibraries pkgDesc)
+  let executableComps = [] -- traverse (extractFromExecutable userId directory dependentName releaseId) (executables pkgDesc)
+  testSuiteComps  <- pure [] -- traverse (extractFromTestSuite  userId directory dependentName releaseId) (testSuites pkgDesc)
+  benchmarkComps  <- pure [] -- traverse (extractFromBenchmark  userId directory dependentName releaseId) (benchmarks pkgDesc)
+  foreignLibComps <- pure [] -- traverse (extractFromforeignLib userId directory dependentName releaseId) (foreignLibs pkgDesc)
+  pure $ mainLib <> subLibComps <> executableComps <> testSuiteComps <> benchmarkComps  <> foreignLibComps
 
 extractFromLib :: UserId
                -> FilePath
@@ -191,21 +195,23 @@ extractFromBenchmark userId directory dependentName releaseId benchmark = do
     getBenchmarkName :: UnqualComponentName -> Text
     getBenchmarkName benchName = T.pack $ unUnqualComponentName benchName
 
--- extractFromforeignLib :: ReleaseId -- ^
---                       -> PackageId -- ^
---                       -> ForeignLib -- ^
---                       -> ExceptT ImportError (DBT IO) (PackageComponent, [Requirement])
--- extractFromforeignLib releaseId packageId foreignLib = do
---   let dependencies = foreignLib ^. #foreignLibBuildInfo ^. #targetBuildDepends
---   let foreignLibName = getforeignLibName $ foreignLib ^. #foreignLibName
---   let componentType = Component.ForeignLib
---   let canonicalForm = CanonicalComponent foreignLibName componentType
---   component <- createComponent releaseId canonicalForm
---   requirements <- traverse (\dependency -> depToRequirement packageId dependency (component ^. #componentId)) dependencies
---   pure (component, requirements)
---   where
---     getforeignLibName :: UnqualComponentName -> Text
---     getforeignLibName foreignLibName = T.pack $ unUnqualComponentName foreignLibName
+extractFromforeignLib :: UserId
+                      -> FilePath
+                      -> DependentName
+                      -> ReleaseId -- ^
+                      -> ForeignLib -- ^
+                      -> ExceptT ImportError (DBT IO) (PackageComponent, [Requirement])
+extractFromforeignLib userId directory dependentName releaseId foreignLib = do
+  let dependencies = foreignLib ^. #foreignLibBuildInfo ^. #targetBuildDepends
+  let foreignLibName = getforeignLibName $ foreignLib ^. #foreignLibName
+  let componentType = Component.ForeignLib
+  let canonicalForm = CanonicalComponent foreignLibName componentType
+  component <- createComponent releaseId canonicalForm
+  requirements <- traverse (\dependency -> depToRequirement userId directory dependentName dependency (component ^. #componentId)) dependencies
+  pure (component, requirements)
+  where
+    getforeignLibName :: UnqualComponentName -> Text
+    getforeignLibName foreignLibName = T.pack $ unUnqualComponentName foreignLibName
 
 depToRequirement :: UserId -> FilePath -> DependentName -> Cabal.Dependency -> ComponentId -> ExceptT ImportError (DBT IO) Requirement
 depToRequirement userId directory (dependentNamespace, dependentPackageName) cabalDependency packageComponentId = do
