@@ -29,6 +29,7 @@ import Distribution.Types.TestSuite
 import Distribution.Types.Version
 import Optics.Core
 
+import qualified Data.UUID as UUID
 import Flora.Import.Types
 import Flora.Model.Package (getPackageByNamespaceAndName)
 import Flora.Model.Package.Component as Component
@@ -39,7 +40,6 @@ import Flora.Model.Requirement (Requirement (..), RequirementId (..),
                                 RequirementMetadata (..), flag)
 import Flora.Model.User
 import Flora.Publish
-import qualified Data.UUID as UUID
 
 -- | This tuple represents the package that depends on any associated dependency/requirement.
 -- It is used in the recursive loading of Cabal files

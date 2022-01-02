@@ -3,18 +3,18 @@ module Flora.Model.Release.Orphans where
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as C8
+import Data.Text.Display
+import qualified Data.Text.Lazy.Builder as Builder
 import Database.PostgreSQL.Simple.FromField (Conversion, Field, FromField (..),
                                              ResultError (ConversionFailed, UnexpectedNull),
                                              returnError)
 import Database.PostgreSQL.Simple.ToField (Action (..), ToField (..))
 import Distribution.Parsec
+import Distribution.Pretty (prettyShow)
 import qualified Distribution.Pretty as Pretty
 import Distribution.Simple.Utils (fromUTF8BS)
 import Distribution.Types.Version
 import Distribution.Types.VersionRange
-import Data.Text.Display
-import qualified Data.Text.Lazy.Builder as Builder
-import Distribution.Pretty (prettyShow)
 
 instance FromField Version where
   fromField :: Field -> Maybe ByteString -> Conversion Version

@@ -10,7 +10,7 @@ import Optics.Core
 import Control.Monad
 import Flora.Model.Package
 import Flora.Model.Package.Component
-import Flora.Model.Release (Release (..), insertRelease, getReleaseByVersion)
+import Flora.Model.Release (Release (..), getReleaseByVersion, insertRelease)
 import Flora.Model.Requirement (Requirement, insertRequirement)
 
 {- TODO: Audit log of the published package
@@ -21,7 +21,7 @@ publishPackage requirements components release package = do
   getPackageById (package ^. #packageId)
     >>= \case
           Nothing -> do
-            liftIO $ T.putStrLn $ "[+] Inserting package " <> display (package ^. #name) 
+            liftIO $ T.putStrLn $ "[+] Inserting package " <> display (package ^. #name)
             liftIO $ T.putStrLn $ "[+] Inserting the following components: of "
                                 <> display (package ^. #name) <> " v" <> display (release ^. #version)
                                 <> ": " <> display (fmap canonicalForm components)
@@ -36,7 +36,7 @@ publishPackage requirements components release package = do
             >>= \case
                   Nothing -> do
                     liftIO $ T.putStrLn $ "[+] Package " <> display (package ^. #name) <> " already exists."
-                    liftIO $ T.putStrLn $ "[+] Inserting the following components: " 
+                    liftIO $ T.putStrLn $ "[+] Inserting the following components: "
                                        <> display (fmap canonicalForm components) <> " of " <> display (package ^. #name)
                                        <> " v" <> display (release ^. #version)
                     insertRelease release
