@@ -1,9 +1,9 @@
 {-# LANGUAGE GADTs        #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -Wno-unused-imports #-}
 module FloraWeb.Client where
 
 import Control.Arrow ((>>>))
-import Lucid
 import Lucid.Orphans ()
 import Servant (AuthProtect)
 import Servant.API.Generic
@@ -14,8 +14,6 @@ import Servant.Client.Generic
 import Flora.Model.PersistentSession
 import Flora.Model.User.Orphans ()
 import FloraWeb.Routes as FloraWeb
-import FloraWeb.Routes.Pages
-import FloraWeb.Routes.Pages.Sessions
 import FloraWeb.Server.Auth
 import Optics.Core
 import qualified Servant.Client.Core as Client
@@ -37,21 +35,21 @@ f // f' = f >>> fromServant >>> f'
 
 type instance AuthClientData (AuthProtect "cookie-auth") = Session
 
-floraClient :: (FloraWeb.Routes (AsClientT ClientM) -> a) -> a
-floraClient = ($ genericClient)
+-- floraClient :: (FloraWeb.Routes (AsClientT ClientM) -> a) -> a
+-- floraClient = ($ genericClient)
 
-fakeSession :: Session
-fakeSession =
-  let sessionId = PersistentSessionId $ read "8631b00a-f042-4751-9649-6b0aa617566f"
-      mUser = Nothing
-      floraEnv = undefined
-   in Session{..}
+-- fakeSession :: Session
+-- fakeSession =
+--   let sessionId = PersistentSessionId $ read "8631b00a-f042-4751-9649-6b0aa617566f"
+--       mUser = Nothing
+--       webEnvStore = undefined
+--    in Session{..}
 
-anonymousRequest :: AuthenticatedRequest (AuthProtect "cookie-auth")
-anonymousRequest = mkAuthenticatedRequest fakeSession addSessionCookie
+-- anonymousRequest :: AuthenticatedRequest (AuthProtect "cookie-auth")
+-- anonymousRequest = mkAuthenticatedRequest fakeSession addSessionCookie
 
-addSessionCookie :: Session -> Client.Request -> Client.Request
-addSessionCookie session req = Client.addHeader "cookie" (session ^. #sessionId) req
+-- addSessionCookie :: Session -> Client.Request -> Client.Request
+-- addSessionCookie session req = Client.addHeader "cookie" (session ^. #sessionId) req
 
-createSession :: LoginForm -> ClientM (Html ())
-createSession loginForm = floraClient $ pages /: anonymousRequest // sessions // create /: loginForm
+-- createSession :: LoginForm -> ClientM (Html ())
+-- createSession loginForm = floraClient $ pages /: anonymousRequest // sessions // create /: loginForm

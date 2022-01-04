@@ -21,6 +21,7 @@ import Flora.Environment
 import Flora.Model.PersistentSession (PersistentSessionId)
 import Flora.Model.User
 import FloraWeb.Server.Auth
+import FloraWeb.Types
 
 type FloraHTML = HtmlT (ReaderT TemplateEnv Identity) ()
 
@@ -88,10 +89,8 @@ defaultTemplateEnv = TemplateDefaults
   , activeElements = defaultActiveElements
   }
 
-fromSession :: Session -> TemplateDefaults -> TemplateEnv
-fromSession Session{sessionId, mUser=mu, floraEnv} defaults =
-  let TemplateDefaults{..} =
-        defaults
-        & (#mUser .~ mu)
-        & (#environment .~ floraEnv ^. #environment)
-   in TemplateEnv{..}
+fromSession :: (MonadIO m) => Session -> TemplateDefaults -> m TemplateEnv
+fromSession Session{sessionId, mUser=mu, webEnvStore} defaults = do
+  floraEnv <- liftIO $ fetchFloraEnv webEnvStore
+  let TemplateDefaults{..} = defaults & (#mUser .~ mu) & (#environment .~ (floraEnv ^. #environment))
+  pure TemplateEnv{..}

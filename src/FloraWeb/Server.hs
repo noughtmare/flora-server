@@ -5,6 +5,7 @@ import Control.Monad
 import Control.Monad.Reader
 import Data.Maybe
 import Data.Text.Display
+import qualified Network.HTTP.Types as HTTP
 import Network.Wai
 import Network.Wai.Handler.Warp
 import Network.Wai.Logger (withStdoutLogger)
@@ -13,8 +14,7 @@ import Optics.Operators
 import qualified Prometheus
 import Prometheus.Metric.GHC (ghcMetrics)
 import Prometheus.Metric.Proc
-import Servant
-import Servant.Server.Experimental.Auth
+import Servant hiding (Header, respond)
 import Servant.Server.Generic
 
 import Flora.Environment
@@ -40,8 +40,10 @@ runFlora = do
 
 runServer :: FloraEnv -> IO ()
 runServer floraEnv = withStdoutLogger $ \logger -> do
+  let webEnv = WebEnv floraEnv
+  webEnvStore  <- liftIO $ newWebEnvStore webEnv
   let server = genericServeTWithContext
-                 (naturalTransform floraEnv) floraServer (genAuthServerContext floraEnv)
+                 (naturalTransform webEnvStore) floraServer (genAuthServerContext floraEnv)
   let warpSettings = setPort (fromIntegral $ httpPort floraEnv ) $
                      setLogger logger $
                      setOnException (sentryOnException (floraEnv ^. #environment)
@@ -56,15 +58,16 @@ floraServer :: Routes (AsServerT FloraM)
 floraServer = Routes
   { assets = serveDirectoryWebApp "./static"
   , pages = \session ->
-      hoistServer
+      hoistServerWithContext
         (Proxy @Pages.Routes)
+        (Proxy :: Proxy '[FloraAuthContext])
         (withReaderT (const session))
         Pages.server
   }
 
-naturalTransform :: FloraEnv -> FloraM a -> Handler a
-naturalTransform env app =
-  runReaderT app env
+naturalTransform :: WebEnvStore -> FloraM a -> Handler a
+naturalTransform webEnvStore app = do
+  runReaderT app webEnvStore
 
-genAuthServerContext :: FloraEnv -> Context '[AuthHandler Request Session]
+genAuthServerContext :: FloraEnv -> Context '[FloraAuthContext]
 genAuthServerContext floraEnv = authHandler floraEnv :. EmptyContext

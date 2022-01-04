@@ -1,5 +1,6 @@
 module FloraWeb.Templates
   ( render
+  , renderUVerb
   , mkErrorPage
   , module Types
   ) where
@@ -15,6 +16,10 @@ import FloraWeb.Templates.Types as Types
 
 render :: TemplateEnv -> FloraHTML -> FloraPageM (Html ())
 render env template = pure $ toHtmlRaw $ runIdentity $
+  runReaderT (renderBST (rendered template)) env
+
+renderUVerb :: TemplateEnv -> FloraHTML -> Html ()
+renderUVerb env template = toHtmlRaw $ runIdentity $
   runReaderT (renderBST (rendered template)) env
 
 mkErrorPage :: TemplateEnv -> FloraHTML -> ByteString

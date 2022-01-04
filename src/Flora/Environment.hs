@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Flora.Environment
   ( FloraEnv(..)
   , LoggingEnv(..)

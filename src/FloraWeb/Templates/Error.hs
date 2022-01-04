@@ -15,7 +15,8 @@ import Servant
 renderError :: Status -> FloraPageM a
 renderError status = do
   session <- ask
-  let templateEnv = fromSession session defaultTemplateEnv & (#title .~ "Flora :: *** Exception")
+  templateDefaults <- fromSession session defaultTemplateEnv
+  let templateEnv = templateDefaults & (#title .~ "Flora :: *** Exception")
   let body = mkErrorPage templateEnv $ showError status
   throwError $ ServerError{ errHTTPCode = statusCode status
                           , errBody = body

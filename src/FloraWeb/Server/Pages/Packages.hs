@@ -29,6 +29,7 @@ import FloraWeb.Server.Auth
 import FloraWeb.Templates
 import FloraWeb.Templates.Error
 import qualified FloraWeb.Templates.Pages.Packages as Packages
+import FloraWeb.Types
 
 server :: ToServant Routes' (AsServerT FloraPageM)
 server = genericServerT Routes'
@@ -39,7 +40,7 @@ server = genericServerT Routes'
 showHandler :: Text -> Text -> FloraPageM (Html ())
 showHandler namespaceText nameText = do
   session <- ask
-  let FloraEnv{pool} = session ^. #floraEnv
+  FloraEnv{pool} <- liftIO $ fetchFloraEnv (session ^. #webEnvStore)
   case (validateNamespace namespaceText, validateName nameText) of
     (Just namespace, Just name) -> do
       result <- liftIO $ withPool pool $ getPackageByNamespaceAndName namespace name
@@ -50,14 +51,14 @@ showHandler namespaceText nameText = do
           releases <- liftIO $ withPool pool $ getReleases (package ^. #packageId)
           let latestRelease =  maximumBy (compare `on` version) releases
           latestReleasedependencies <- liftIO $ withPool pool $ getRequirements (latestRelease ^. #releaseId)
-          let templateEnv = fromSession session defaultTemplateEnv
+          templateEnv <- fromSession session defaultTemplateEnv
           render templateEnv $ Packages.showPackage latestRelease package dependents latestReleasedependencies
     _ -> renderError notFound404
 
 showVersionHandler :: Text -> Text -> Text -> FloraPageM (Html ())
 showVersionHandler namespaceText nameText versionText = do
   session <- ask
-  let FloraEnv{pool} = session ^. #floraEnv
+  FloraEnv{pool} <- liftIO $ fetchFloraEnv (session ^. #webEnvStore)
   case (validateNamespace namespaceText, validateName nameText, validateVersion versionText) of
     (Just namespace, Just name, Just versionSpec) -> do
       result <- liftIO $ withPool pool $ getPackageByNamespaceAndName namespace name
@@ -70,7 +71,7 @@ showVersionHandler namespaceText nameText versionText = do
               Nothing -> renderError notFound404
               Just release -> do
                 releaseDependencies <- liftIO $ withPool pool $ getRequirements (release ^. #releaseId)
-                let templateEnv = fromSession session defaultTemplateEnv
+                templateEnv <- fromSession session defaultTemplateEnv
                 render templateEnv $ Packages.showPackage release package dependents releaseDependencies
     _ -> renderError notFound404
 
@@ -84,4 +85,3 @@ validateName txt = parsePackageName txt
 
 validateVersion :: Text -> Maybe Version
 validateVersion txt = simpleParsec $ T.unpack txt
-

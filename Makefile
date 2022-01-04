@@ -45,10 +45,10 @@ test: ## Run the test suite
 ghcid: ## Load the main library into ghcid and reload it on file change
 	@ghcid --target flora-server -l
 
-ghcid-test: ## Load the tests in ghcid and reload them on file change
+watch-test: ## Load the tests in ghcid and reload them on file change
 	@ghcid --command='cabal v2-repl flora-test' --test 'Main.main'
 
-ghcid-server: ## Start flora-server in ghcid
+watch-server: ## Start flora-server in ghcid
 	@ghcid --target=flora-server --restart="src" --test 'FloraWeb.Server.runFlora'
 
 lint: ## Run the code linter (HLint)

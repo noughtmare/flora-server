@@ -30,19 +30,20 @@ ensureUser adminM = do
   case mUser of
     Nothing -> renderError forbidden403
     Just user ->
-      withReaderT (\Session{floraEnv} -> ProtectedSession{..}) adminM
+      withReaderT (\Session{webEnvStore} -> ProtectedSession{..}) adminM
 
 homeHandler :: FloraPageM (Html ())
 homeHandler = do
   session <- ask
-  let templateEnv = fromSession session defaultTemplateEnv
-          & (#displayNavbarSearch .~ False)
+  templateDefaults <- fromSession session defaultTemplateEnv
+  let templateEnv = templateDefaults & (#displayNavbarSearch .~ False)
   render templateEnv Home.show
 
 aboutHandler :: FloraPageM (Html ())
 aboutHandler = do
   session <- ask
-  let (templateEnv :: TemplateEnv) = fromSession session defaultTemplateEnv
+  templateDefaults <- fromSession session defaultTemplateEnv
+  let (templateEnv :: TemplateEnv) = templateDefaults
         & (#activeElements % #aboutNav .~ True)
   render templateEnv Home.about
 

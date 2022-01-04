@@ -1,54 +1,29 @@
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE PolyKinds             #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
-
-module FloraWeb.Server.Auth where
+module FloraWeb.Server.Auth
+  ( module FloraWeb.Server.Auth.Types
+  , FloraAuthContext
+  , authHandler
+  ) where
 
 import Control.Monad.Except
-import Control.Monad.Reader (ReaderT)
 import qualified Data.List as List
 import Data.Pool (Pool)
+import qualified Data.UUID as UUID
 import Database.PostgreSQL.Entity.DBT
 import Database.PostgreSQL.Simple
-import GHC.Generics
 import Network.Wai
 import Optics.Core
-import Servant.API (AuthProtect)
+import Servant.API (Header, Headers)
 import Servant.Server
-import Servant.Server.Experimental.Auth (AuthHandler, AuthServerData,
-                                         mkAuthHandler)
+import Servant.Server.Experimental.Auth (AuthHandler, mkAuthHandler)
 import Web.Cookie
 
-import qualified Data.UUID as UUID
 import Flora.Environment
 import Flora.Model.PersistentSession
 import Flora.Model.User
-import Network.HTTP.Types
-
-type instance AuthServerData (AuthProtect "cookie-auth") = Session
-
--- | Datatypes used for every route that doesn't *need* an authenticated user
-type FloraPageM = ReaderT Session Handler
-
-data Session = Session
-  { sessionId :: PersistentSessionId
-  , mUser     :: Maybe User
-  , floraEnv  :: FloraEnv
-  } deriving stock (Show, Generic)
-
--- | Datatypes used for routes that *need* an authenticated user
-type FloraAdminM = ReaderT ProtectedSession Handler
-
-data ProtectedSession = ProtectedSession
-  { sessionId :: PersistentSessionId
-  , user      :: User
-  , floraEnv  :: FloraEnv
-  } deriving stock (Generic)
+import FloraWeb.Server.Auth.Types
+import FloraWeb.Session
+import FloraWeb.Types
+import Network.HTTP.Types (hCookie)
 
 -- | List of cookies used:
 --    * "flora_server_session": Used only when a user is registered on the system.
@@ -70,12 +45,15 @@ data ProtectedSession = ProtectedSession
 -- If no user session exists for the sessionId, drop the cookie
 -- If fetching the user fails, return 500
 -- If no user exists with the stored userId, send back 403
+--
 
-authHandler :: FloraEnv -> AuthHandler Request Session
+type FloraAuthContext = AuthHandler Request (Headers '[Header "Set-Cookie" SetCookie] Session)
+
+authHandler :: FloraEnv -> FloraAuthContext
 authHandler floraEnv = mkAuthHandler handler
   where
     pool = floraEnv ^. #pool
-    handler :: Request -> Handler Session
+    handler :: Request -> Handler (Headers '[Header "Set-Cookie" SetCookie] Session)
     handler req = do
       let cookies = getCookies req
       mPersistentSessionId <- getSessionId cookies
@@ -83,16 +61,19 @@ authHandler floraEnv = mkAuthHandler handler
       mUserInfo <- getUser pool mPersistentSession
       (mUser, sessionId) <- do
         case mUserInfo of
-          Nothing -> do 
+          Nothing -> do
             nSessionId <- liftIO newPersistentSessionId
             liftIO $ putStrLn $ "[+] New session created, SessionId: " <> show nSessionId
-            liftIO $ putStrLn "[+] No user found" 
+            liftIO $ putStrLn "[+] No user found"
             pure (Nothing, nSessionId)
           Just (user, userSession) -> do
             liftIO $ putStrLn $ "[+] SessionId: " <> show (userSession ^. #persistentSessionId)
             liftIO $ putStrLn $ "[+] User: "  <> show user
             pure (Just user, userSession ^. #persistentSessionId)
-      pure Session{..}
+      webEnvStore <- liftIO $ newWebEnvStore (WebEnv floraEnv)
+      let sessionCookie = craftSessionCookie sessionId False
+      pure $ addCookie sessionCookie (Session{..})
+
 
 getCookies :: Request -> Cookies
 getCookies req =
